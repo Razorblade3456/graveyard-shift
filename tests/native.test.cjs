@@ -9,12 +9,12 @@ function load(name,modules){const module={exports:{}};const file=path.join(__dir
 const core=load('core',{});
 function state(){const s=core.initialState();s.profiles[0].workplace={name:'Job',latitude:0,longitude:0,radius:200};s.profiles.push({...core.newProfile('Study','study'),workplace:{name:'Desk',latitude:0,longitude:0,radius:200},category:'Study'});return s;}
 function harness(seed=state(),os='ios'){
- let current=seed,callback,registered=[],starts=0,fixes=0,available=true,permission=true,fail=false;
- const notifications=[];const store={read:()=>current,update:fn=>{const next=fn(current);core.validateState(next);current=next;return next;}};
+ let currentScope='guest',current=seed,callback,registered=[],starts=0,fixes=0,available=true,permission=true,fail=false;
+ const notifications=[];const store={scopeToken:()=>currentScope,read:()=>current,update:fn=>{const next=fn(current);core.validateState(next);current=next;return next;}};
  const location={GeofencingEventType:{Enter:1,Exit:2},Accuracy:{High:4},hasServicesEnabledAsync:async()=>true,isBackgroundLocationAvailableAsync:async()=>true,requestForegroundPermissionsAsync:async()=>({granted:permission}),requestBackgroundPermissionsAsync:async()=>({granted:permission}),getBackgroundPermissionsAsync:async()=>({granted:permission}),hasStartedGeofencingAsync:async()=>registered.length>0,startGeofencingAsync:async(_,rs)=>{starts++;if(fail)throw Error('Native registration failed');registered=rs;},stopGeofencingAsync:async()=>{registered=[];},getCurrentPositionAsync:async()=>{fixes++;return {timestamp:Date.now(),coords:{latitude:0,longitude:0,accuracy:5}};}};
  const task={defineTask:(_,fn)=>{callback=fn;},isAvailableAsync:async()=>available,getTaskOptionsAsync:async()=>({regions:registered})};
  const api=load('geofence',{'expo-location':location,'expo-task-manager':task,'expo-notifications':{setNotificationHandler:()=>{},getPermissionsAsync:async()=>({granted:true}),scheduleNotificationAsync:async n=>notifications.push(n)},'react-native':{Platform:{OS:os}},'./core':core,'./store':store});
- return {api,store,location,get state(){return current;},get starts(){return starts;},get registered(){return registered;},get fixes(){return fixes;},notifications,deny:()=>{permission=false;},fail:()=>{fail=true;},event:(identifier,eventType=1)=>callback({data:{region:{identifier},eventType}})};
+ return {scope:value=>{currentScope=value;},api,store,location,get state(){return current;},get starts(){return starts;},get registered(){return registered;},get fixes(){return fixes;},notifications,deny:()=>{permission=false;},fail:()=>{fail=true;},event:(identifier,eventType=1)=>callback({data:{region:{identifier},eventType}})};
 }
 test('native registration enables all selected profiles; switching and sync do not reregister',async()=>{const h=harness();await h.api.start('default');await h.api.start('study');assert.equal(h.registered.length,2);h.store.update(s=>({...s,selectedId:'study'}));const n=h.starts;await h.api.sync();assert.equal(h.starts,n);const m=await h.api.monitoring();assert.equal(m.registered.length,2);assert.equal(m.error,'');});
 test('real task callback routes identical locations independently and ignores duplicate arrivals',async()=>{const h=harness();await h.api.start('default');await h.api.start('study');const [a,b]=h.registered.map(r=>r.identifier);await Promise.all([h.event(a),h.event(b)]);assert.equal(h.state.shifts.length,2);await h.event(a);await h.event(b);assert.equal(h.state.shifts.length,2);assert.equal(h.notifications.length,2);assert.ok(h.notifications.some(n=>n.content.title.includes('Study')));});
@@ -29,8 +29,10 @@ test('actual SQLite migration and transactions survive reopen and roll back inva
  const at=Date.now()-7200000;const old={workplace:{name:'Old job',latitude:0,longitude:0,radius:200},automation:false,pay:15,shifts:[{id:'legacy',start:at,end:at+3600000,workplace:'Old job',startSource:'manual',endSource:'manual',edited:false}]};
  db.prepare('INSERT INTO state VALUES(1,?)').run(JSON.stringify(old));
  const adapter={openDatabaseSync:()=>({execSync:sql=>db.exec(sql),getFirstSync:sql=>db.prepare(sql).get(),runSync:(sql,...args)=>db.prepare(sql).run(...args),withTransactionSync:fn=>{db.exec('BEGIN');try{fn();db.exec('COMMIT');}catch(e){db.exec('ROLLBACK');throw e;}}})};
- const store=load('store',{'expo-sqlite':adapter,'./core':core});assert.equal(store.read().shifts[0].id,'legacy');assert.equal(store.read().shifts[0].profileId,'default');
+ const store=load('store',{'expo-sqlite':adapter,'./core':core,'./account-store':{accountId:()=>null,scopeToken:()=> 'guest'}});assert.equal(store.read().shifts[0].id,'legacy');assert.equal(store.read().shifts[0].profileId,'default');
  store.update(s=>({...s,profiles:[...s.profiles,core.newProfile('Personal','personal')]}));
  assert.throws(()=>store.update(s=>({...s,profiles:[]})),/Invalid profile backup/);
- const reopened=load('store',{'expo-sqlite':adapter,'./core':core});assert.equal(reopened.read().profiles.length,2);assert.equal(reopened.read().shifts.length,1);db.close();
+ const reopened=load('store',{'expo-sqlite':adapter,'./core':core,'./account-store':{accountId:()=>null,scopeToken:()=> 'guest'}});assert.equal(reopened.read().profiles.length,2);assert.equal(reopened.read().shifts.length,1);db.close();
 });
+
+test('native regions are account-scoped and reject previous-account callbacks',async()=>{const h=harness();h.scope('account-a');await h.api.start('study');const old=h.registered[0].identifier;assert.ok(old.startsWith('account-a|'));h.scope('account-b');await h.event(old);assert.equal(h.fixes,0);assert.equal(h.state.shifts.length,0);});

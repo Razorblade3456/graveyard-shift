@@ -1,0 +1,1 @@
+export const authStorage={getItem:async(key:string)=>window.localStorage.getItem(key),setItem:async(key:string,value:string)=>window.localStorage.setItem(key,value),removeItem:async(key:string)=>window.localStorage.removeItem(key)};

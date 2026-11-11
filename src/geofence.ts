@@ -3,7 +3,8 @@ import * as TaskManager from 'expo-task-manager';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import { changeProfile, clock, confirmed, distance, Profile, regionKey, regions, State } from './core';
-import { read, update } from './store';
+import { read, update, scopeToken } from './store';
+function scopedKey(p:Profile){const scope=scopeToken?.()??'guest';return scope==='guest'?regionKey(p):`${scope}|${regionKey(p)}`;}
 export const TASK='graveyard-workplace-v1'; // Keep the existing task name across upgrades.
 export const LIMIT=Platform.OS==='ios'?20:Platform.OS==='android'?100:0;
 const boundaryQueues=new Map<string,Promise<void>>();
@@ -14,7 +15,7 @@ TaskManager.defineTask<{eventType:Location.GeofencingEventType;region:Location.L
  if(error){update(s=>({...s,monitorError:error.message}));return;}
  const detected=Date.now();
  if(!data)return;
- const p=read().profiles.find(p=>regionKey(p)===data.region.identifier&&p.automation&&!p.archived);
+ const p=read().profiles.find(p=>scopedKey(p)===data.region.identifier&&p.automation&&!p.archived);
  if(!p?.workplace)return; // Deleted, disabled, old-revision and legacy single-location events are ignored.
  const direction=data.eventType===Location.GeofencingEventType.Enter?'in':'out';
  return boundary(p.id,async()=>{try{
@@ -22,12 +23,12 @@ TaskManager.defineTask<{eventType:Location.GeofencingEventType;region:Location.L
   let changed=false;
   update(s=>{
    const current=s.profiles.find(x=>x.id===p.id);
-   if(!current?.automation||current.archived||regionKey(current)!==data.region.identifier)return s;
+   if(!current?.automation||current.archived||scopedKey(current)!==data.region.identifier)return s;
    if(Date.now()-fix.timestamp>120000||!confirmed(direction,distance(fix.coords,current.workplace!),fix.coords.accuracy??Infinity,current.workplace!.radius))return changeProfile(s,p.id,p=>({...p,diagnostic:'Boundary could not be confirmed accurately. Review this profile’s shift manually.'}));
    const next=clock(s,direction,'auto',detected,`${data.region.identifier}:${direction}`,p.id);changed=next.shifts!==s.shifts;
    return changeProfile(next,p.id,p=>({...p,diagnostic:''}));
   });
-  if(changed)await notify(direction,p.name);
+  if(changed){await notify(direction,p.name);if((scopeToken?.()??'guest')!=='guest'){try{await (await import('./cloud-sync')).syncCloud();}catch{/* Durable pending changes retry on app resume. */}}}
  }catch(e){update(s=>changeProfile(s,p.id,p=>({...p,diagnostic:`GPS confirmation failed: ${String(e)}. Review this profile’s shift.`})));}});
 });
 
@@ -50,7 +51,7 @@ async function registeredKeys():Promise<string[]>{
 function same(a:string[],b:string[]){return a.length===b.length&&[...a].sort().every((v,i)=>v===[...b].sort()[i]);}
 async function reconcile(request=false){
  try{
-  const desired=regions(read(),LIMIT);
+  const desired=regions(read(),LIMIT).map(r=>({...r,identifier:(scopeToken?.()??'guest')==='guest'?r.identifier:`${scopeToken()}|${r.identifier}`}));
   if(!desired.length){if(await Location.hasStartedGeofencingAsync(TASK))await Location.stopGeofencingAsync(TASK);update(s=>({...s,monitorError:''}));return;}
   await permissions(request);
   if(!same(await registeredKeys(),desired.map(r=>r.identifier)))await Location.startGeofencingAsync(TASK,desired);
@@ -71,7 +72,9 @@ export async function stopAll(){return configure(s=>({...s,profiles:s.profiles.m
 export type Monitoring={registered:string[];error:string;enabled:number};
 export async function monitoring():Promise<Monitoring>{
  const s=read(),enabled=s.profiles.filter(p=>p.automation&&!p.archived).length;
- try{if(!enabled)return {registered:[],error:s.monitorError,enabled};await permissions(false);const keys=await registeredKeys();const desired=regions(s,LIMIT);const exact=same(keys,desired.map(r=>r.identifier));return {registered:s.profiles.filter(p=>p.automation&&!p.archived&&keys.includes(regionKey(p))).map(p=>p.id),error:exact?s.monitorError:'Registration differs from enabled profiles. Retry monitoring.',enabled};}
+ try{if(!enabled)return {registered:[],error:s.monitorError,enabled};await permissions(false);const keys=await registeredKeys();const desired=regions(s,LIMIT).map(r=>({...r,identifier:(scopeToken?.()??'guest')==='guest'?r.identifier:`${scopeToken()}|${r.identifier}`}));const exact=same(keys,desired.map(r=>r.identifier));return {registered:s.profiles.filter(p=>p.automation&&!p.archived&&keys.includes(scopedKey(p))).map(p=>p.id),error:exact?s.monitorError:'Registration differs from enabled profiles. Retry monitoring.',enabled};}
  catch(e){return {registered:[],error:e instanceof Error?e.message:String(e),enabled};}
 }
 export function profileStatus(p:Profile,m:Monitoring){return p.archived?'Archived · GPS off':!p.workplace?'Manual only · no location':!p.automation?'Automatic clocking off':m.registered.includes(p.id)?'Geofence registered · OS monitoring':'Not monitoring · needs attention';}
+
+export async function suspendMonitoring(){return serial(async()=>{if(await Location.hasStartedGeofencingAsync(TASK))await Location.stopGeofencingAsync(TASK);});}

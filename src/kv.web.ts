@@ -1,0 +1,1 @@
+export const kv={get:(key:string)=>window.localStorage.getItem(`graveyard-cloud:${key}`),set:(key:string,value:string)=>window.localStorage.setItem(`graveyard-cloud:${key}`,value),remove:(key:string)=>window.localStorage.removeItem(`graveyard-cloud:${key}`),transaction:<T>(fn:()=>T):T=>fn()};

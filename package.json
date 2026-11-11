@@ -1,6 +1,6 @@
 {
   "name": "graveyard-shift",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -15,12 +15,14 @@
   "dependencies": {
     "@expo/metro-runtime": "~6.1.2",
     "@react-native-community/slider": "5.0.1",
+    "@supabase/supabase-js": "^2.119.0",
     "expo": "~54.0.0",
     "expo-dev-client": "~6.0.0",
     "expo-document-picker": "~14.0.0",
     "expo-file-system": "~19.0.0",
     "expo-location": "~19.0.0",
     "expo-notifications": "~0.32.0",
+    "expo-secure-store": "~15.0.8",
     "expo-sharing": "~14.0.0",
     "expo-sqlite": "~16.0.0",
     "expo-task-manager": "~14.0.0",
@@ -28,10 +30,12 @@
     "react-dom": "19.1.0",
     "react-native": "0.81.5",
     "react-native-maps": "1.20.1",
+    "react-native-url-polyfill": "^4.0.0",
     "react-native-web": "^0.21.0"
   },
   "devDependencies": {
-    "typescript": "~5.9.2",
-    "@types/react": "~19.1.10"
+    "@electric-sql/pglite": "^0.5.16",
+    "@types/react": "~19.1.10",
+    "typescript": "~5.9.2"
   }
 }

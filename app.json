@@ -2,7 +2,7 @@
   "expo": {
     "name": "GRAVEYARD SHIFT",
     "slug": "graveyard-shift",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "ios": {
@@ -24,7 +24,8 @@
       ],
       "expo-sqlite",
       "expo-notifications",
-      "expo-document-picker"
+      "expo-document-picker",
+      "expo-secure-store"
     ],
     "web": {
       "bundler": "metro",

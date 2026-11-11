@@ -17,3 +17,7 @@ export async function importData(){
   input.click();
  });
 }
+
+export async function exportRecovery(payload:unknown){const url=URL.createObjectURL(new Blob([JSON.stringify({kind:'graveyard-recovery',version:2,state:read(),recovery:payload},null,2)],{type:'application/json'}));const link=document.createElement('a');link.href=url;link.download='graveyard-recovery-'+Date.now()+'.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),60000);}
+
+export async function exportSnapshot(state:import('./core').State,name='graveyard-local-backup'){const url=URL.createObjectURL(new Blob([JSON.stringify({version:2,state},null,2)],{type:'application/json'}));const link=document.createElement('a');link.href=url;link.download=name+'-'+Date.now()+'.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),60000);}

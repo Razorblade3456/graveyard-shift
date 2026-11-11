@@ -4,3 +4,7 @@ dist/
 android/
 ios/
 *.db
+
+.env
+.env.*
+!.env.example
