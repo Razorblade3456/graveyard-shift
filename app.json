@@ -25,6 +25,10 @@
       "expo-sqlite",
       "expo-notifications",
       "expo-document-picker"
-    ]
+    ],
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    }
   }
 }

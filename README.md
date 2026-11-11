@@ -2,6 +2,20 @@
 
 A native, local-first personal time tracker for iPhone and Android. Five compact sections: Home, Profiles, History, Stats, Settings. Profiles are independent trackers, never login accounts. No app account, backend, subscription, or continuous route recording. Built with React Native, Expo SDK 54, and TypeScript. SDK 54 is deliberately pinned with its compatible native dependency versions in package-lock.json.
 
+## Netlify / web companion
+
+Install with `npm ci`, then run `npx expo export -p web` or `npm run build:web`. The checked-in `netlify.toml` sets Node 22, build command `npm run build:web`, publish directory `dist`, and an SPA fallback to `index.html`. Use the repository root as the Netlify base directory; this project has no monorepo subdirectory. If dashboard overrides exist, align them with these settings. No server/functions or SSR are required.
+
+Expo SDK 54 selected React DOM 19.1.0, React Native Web ^0.21.0, and @expo/metro-runtime ~6.1.2 via `npx expo install react-dom react-native-web @expo/metro-runtime`. app.json uses Metro and `web.output: "single"`, which exports static SPA assets for this non-Router app. Do not switch to `output: "static"` or `"server"` without introducing the associated Expo Router rendering setup. Commit package.json, package-lock.json, app.json, index.ts, netlify.toml, the changed screens, and the new platform adapters. Do not commit node_modules or dist.
+
+The same Home, Profiles, History/calendar, Stats, and Settings screens run on web. Manual timers use saved timestamps, so elapsed time is reconstructed when you reopen the page. Multiple simultaneous profile timers remain supported. Browser background GPS, geofencing, native permission settings, and clock notifications are disabled; no page claims monitoring is active. Current-position lookup may be used in a secure browser context (Netlify HTTPS or localhost); address geocoding and native map pins remain native features.
+
+The browser adapter persists the existing version-2 profile/shift schema in localStorage under `graveyard-shift-state-v2`. Native iPhone/Android SQLite data and logic are unchanged. Web storage is isolated by browser and origin; it does not automatically sync with the native app or another URL. Clearing site data/private browsing can remove records, so download JSON backups. Export uses browser downloads; restore uses a JSON file picker, including legacy backups. Failed writes surface an error rather than pretending records were saved. Use a single tab when editing records to avoid concurrent browser-tab writes. No service-worker/offline-install support is added by this deployment fix.
+
+Platform-specific `.web.ts(x)` modules keep native SQLite, TaskManager, maps, and file APIs out of browser startup. Native modules keep their original implementations. A small Alert adapter retains browser error messages and confirmations because React Native Web's Alert API does not display native dialogs.
+
+References: [Expo web setup](https://docs.expo.dev/workflow/web/), [Netlify file-based configuration](https://docs.netlify.com/build/configure-builds/file-based-configuration/).
+
 ## Windows 11 → iPhone
 
 Install Node.js 22 LTS and Git. Open PowerShell in this project folder:
@@ -40,7 +54,7 @@ Official setup: [Expo iOS device builds](https://docs.expo.dev/tutorial/eas/ios-
 
 Install Android Studio, Android SDK/JDK, and enable USB debugging. With a connected device or emulator, run `npm run android`. Alternatively run `npx eas-cli@latest build --profile preview --platform android` for an installable internal APK. Background permission may require opening system settings and choosing “Allow all the time.” Disable restrictive battery management for field testing.
 
-Android supports address search and current-GPS workplace selection. The interactive map/pin and radius preview are iPhone-only, avoiding a Google Maps key or paid map service requirement on Android. Saved coordinates and radius work on both platforms. iPhone uses the system map. No browser companion is included; browsers cannot reliably run background geofences.
+Android supports address search and current-GPS workplace selection. The interactive map/pin and radius preview are iPhone-only, avoiding a Google Maps key or paid map service requirement on Android. Saved coordinates and radius work on both platforms. iPhone uses the system map. The web companion supports manual tracking, profiles, history, statistics, and browser-local storage. Background geofences are disabled on web; use the native build for automatic location clocking.
 
 ## Profiles and locations (v1.1)
 

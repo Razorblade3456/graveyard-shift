@@ -1,0 +1,12 @@
+[build]
+  command = "npm run build:web"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+# Expo single-page export: preserve files and serve the app for navigation requests.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
