@@ -5,8 +5,15 @@
 [build.environment]
   NODE_VERSION = "22"
 
-# Expo single-page export: preserve files and serve the app for navigation requests.
+# Serve the exported single-page app for navigation requests.
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
+
+# Preserve the incoming cross-origin isolation headers for WebAssembly support.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Cross-Origin-Opener-Policy = "same-origin"
+    Cross-Origin-Embedder-Policy = "require-corp"
