@@ -1,0 +1,30 @@
+{
+  "expo": {
+    "name": "GRAVEYARD SHIFT",
+    "slug": "graveyard-shift",
+    "version": "1.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "ios": {
+      "bundleIdentifier": "com.graveyardshift.personal",
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "com.graveyardshift.personal"
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow Graveyard Shift to detect arrivals and departures at your workplace, even while the app is in the background.",
+          "locationWhenInUsePermission": "Choose your workplace and check GPS accuracy.",
+          "isIosBackgroundLocationEnabled": true,
+          "isAndroidBackgroundLocationEnabled": true
+        }
+      ],
+      "expo-sqlite",
+      "expo-notifications",
+      "expo-document-picker"
+    ]
+  }
+}
