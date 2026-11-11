@@ -1,0 +1,10 @@
+[build]
+  command = "expo export -p web"
+  publish = "dist"
+
+# expo-sqlite on web uses SharedArrayBuffer, which requires cross-origin isolation.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Cross-Origin-Opener-Policy = "same-origin"
+    Cross-Origin-Embedder-Policy = "require-corp"
